@@ -246,3 +246,62 @@ db.estadisticas_historicas.updateOne(
 ```bash
 db.estadisticas_historicas.deleteOne({"id_empleado": "E002"})
 ```
+
+# **Comandos de replicacion**
+
+## Para iniciar la instancia en tipo replica
+```bash
+mongod --port 27017 --dbpath ~/data/n1 --replSet rs0
+```
+
+## Conexion al mongo
+```bash
+mongosh —port 27017
+```
+
+## Iniciar el replica set
+```bash
+rs.initiate({
+     _id: "rs0",
+     members: [
+         { _id: 0, host: "localhost:27017" }
+     ]
+ })
+```
+
+## Ver configuracion del replica set
+```bash
+rs.conf()
+```
+
+## Ver status del replica set
+```bash
+rs.status()
+```
+
+## Agregar nodos secundarios
+```bash
+mongod --port 27018 --dbpath ~/data/n2 --replSet rs0
+mongod --port 27019 --dbpath ~/data/n3 --replSet rs0
+```
+
+## Desde la consola principal agregar los nodos al replica set
+```bash
+rs.add("localhost:27018")
+rs.add("localhost:27019")
+```
+
+## Eliminar nodo 
+```bash
+rs.remove("localhost:27019")
+```
+
+## Bajar el nodo principal
+```bash
+rs.stepDown()
+```
+
+## ¿El nodo es primario?
+```bash
+rs.isMaster()
+```
