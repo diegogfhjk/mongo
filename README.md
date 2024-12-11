@@ -298,10 +298,126 @@ rs.remove("localhost:27019")
 
 ## Bajar el nodo principal
 ```bash
-rs.stepDown()
+rs.stepDo\
 ```
 
 ## ¿El nodo es primario?
 ```bash
 rs.isMaster()
+```
+
+# **Comandos de sharding**
+
+## **Creacion directorios de almacenamiento de los shards**
+```bash
+mkdir -p ~/data/shard1/data1
+mkdir -p ~/data/shard1/data2
+mkdir -p ~/data/shard1/data3
+
+mkdir -p ~/data/shard2/data1
+mkdir -p ~/data/shard2/data2
+mkdir -p ~/data/shard2/data3
+```
+
+## **Iniciar instancias de los shards**
+```bash
+mongod --shardsvr --port 26017 --dbpath ~/data/shard1/data1 --replSet shard1_replset
+mongod --shardsvr --port 26117 --dbpath ~/data/shard1/data2 --replSet shard1_replset
+mongod --shardsvr --port 26217 --dbpath ~/data/shard1/data3 --replSet shard1_replset
+mongod --shardsvr --port 28017 --dbpath ~/data/shard2/data1 --replSet shard2_replset
+mongod --shardsvr --port 28117 --dbpath ~/data/shard2/data2 --replSet shard2_replset
+mongod --shardsvr --port 28217 --dbpath ~/data/shard2/data3 --replSet shard2_replset
+```
+
+## **Conexion a fragmento**
+```bash 
+mongosh localhost:26017
+```
+
+## **Iniciar replicaset**
+```bash
+rs.initiate({_id:"shard1_replset",members:[{_id:0,host:"localhost:26017"},{_id:1,host:"localhost:26117"},{_id:2,host:"localhost:26217"}]})
+```
+
+## **Conexion al otro fragmento**
+```bash
+mongosh localhost:28017
+```
+
+## **Iniciar replicaset**
+```bash
+rs.initiate({_id:"shard2_replset",members:[{_id:0,host:"localhost:28017"},{_id:1,host:"localhost:28117"},{_id:2,host:"localhost:28217"}]})
+```
+
+## **Creacion carpetas servidores de configuracion**
+```bash
+mkdir -p ~/data/config_server/data1
+mkdir -p ~/data/config_server/data2
+mkdir -p ~/data/config_server/data3
+```
+
+## **Iniciar servidores de configuracion**
+```bash
+mongod --configsvr --port 47017 --dbpath ~/data/config_server/data1 --replSet configserver1_replset
+mongod --configsvr --port 47117 --dbpath ~/data/config_server/data2 --replSet configserver1_replset
+mongod --configsvr --port 47217 --dbpath ~/data/config_server/data3 --replSet configserver1_replset
+```
+
+## **Entrar al servidor para iniciar la replicacion**
+```bash
+mongosh localhost:47017
+```
+
+## **Iniciar mongos**
+```bash
+mongos --configdb configserver1_replset/localhost:47017,localhost:47117,localhost:47217 --port 1000
+```
+
+## **Conexion al enrutador**
+```bash
+mongosh localhost:1000
+```
+
+## **Agregar los servidores de fragmentacion**
+```bash
+sh.addShard("shard1_replset/localhost:26017,localhost:26117,localhost:26217")
+sh.addShard("shard2_replset/localhost:28017,localhost:28117,localhost:28217")
+```
+
+## **Habilitar la fragmentacion para la base de datos**
+```bash
+sh.enableSharding("prodsoft")
+```
+
+## **Habilitar fragmentacion para una colleccion**
+```bash
+sh.shardCollection("prodsoft.empleados", { "linea_produccion": 1 })
+```
+
+## **Agregar datos a la coleccion**
+```bash
+use productividadDB;
+
+for (var i = 0; i < 10000; i++) {
+    db.empleados.insertOne({
+        id_empleado: "E" + (Math.floor(Math.random() * 10000) + 1).toString().padStart(5, '0'),
+        nombre: "Empleado_" + (Math.floor(Math.random() * 10000) + 1),
+        linea_produccion: "Línea " + (Math.floor(Math.random() * 10) + 1),
+        turno: ["Diurno", "Nocturno"][Math.floor(Math.random() * 2)],
+        rol: ["Operario", "Supervisor", "Técnico", "Administrativo"][
+            Math.floor(Math.random() * 4)
+        ], 
+        meta_unidades: Math.floor(Math.random() * 100) + 20 
+    });
+}
+```
+
+## **Contar y verificar la distribucion de los shards**
+```bash
+db.empleados.count()
+```
+
+# **Comando para verificar el status del shard**
+```bash
+sh.status()
 ```
